@@ -1,22 +1,37 @@
 # Zeek to MySQL Integration
 
-This project includes a set of scripts designed to capture network traffic, process it using Zeek, and then convert the Zeek logs into a MySQL database for analysis and review.
+## Project Overview
+
+This project provides a comprehensive solution for capturing network traffic, processing it with Zeek (formerly Bro), and storing the enriched logs into a MySQL database for further analysis and visualization. It includes scripts and configurations to enhance Zeek's capabilities with GeoIP, ASN data, and JA3/JA4 fingerprinting, enabling detailed network security monitoring and analysis.
+
+## Features
+
+- **Traffic Capture**: Utilizes `tcpdump` to capture live network traffic.
+- **Log Processing**: Processes captured traffic with Zeek, enriched with GeoIP, ASN, and JA3/JA4 data.
+- **Data Storage**: Converts Zeek logs into a MySQL database for easy querying and analysis.
+- **Automation**: Includes scripts to automate the entire process and run it as a service.
+- **Customization**: Allows customization of network interfaces, capture durations, and database configurations.
 
 ## Project Structure
 
-- `zeek_to_mysql.sh`: Shell script to manage the full lifecycle of traffic capturing, log processing, and database insertion.
+- `zeek_to_mysql.sh`: Shell script to manage traffic capturing, Zeek processing, and database insertion.
 - `zeek_to_mysql.py`: Python script to convert processed Zeek logs into MySQL.
-- `.env`: Environment file to store configuration variables.
+- `asn_enrichment.zeek`: Zeek script for ASN and GeoIP enrichment.
+- `.env` / `zeek_to_mysql_config.ini`: Configuration files to store environment variables.
+- `setup.sh`: Enhanced setup script for initial configuration and automation.
+- `README.md`: Documentation and usage instructions.
 
 ## Requirements
 
 ### Software Dependencies
 
-- **Zeek**: Network analysis framework that identifies and logs network connections.
+- **Zeek**: Network analysis framework for monitoring network traffic.
 - **MySQL/MariaDB**: Database server to store and manage the log data.
-- **tcpdump**: Tool for traffic capturing.
+- **tcpdump**: Tool for capturing network traffic.
 - **Python 3**: Required for running the Python script.
-- **mysql-connector-python**: Python library to connect and interact with MySQL.
+- **gcc, make, cmake, flex, bison, libpcap, openssl, swig, zlib, jemalloc**: Required for compiling Zeek from source.
+- **MaxMind GeoIP Databases**: For GeoIP and ASN enrichment.
+- **JA3/JA4 Zeek Packages**: For SSL/TLS fingerprinting.
 
 ### Python Libraries
 
@@ -26,11 +41,141 @@ Install the required Python libraries using the following command:
 pip install -r requirements.txt
 ```
 
-## Configuration
-
-Before running the scripts, ensure that the `.env` file is properly configured with the necessary database and network settings. Example:
+`requirements.txt`:
 
 ```plaintext
+mysql-connector-python==8.0.28
+python-dotenv==0.20.0
+```
+
+## Installation
+
+### 1. System Preparation
+
+Update your system and install essential build tools:
+
+```bash
+sudo pacman -Syu gcc make cmake flex bison libpcap openssl python3 swig zlib jemalloc
+```
+
+### 2. Install Zeek
+
+#### a. Download Zeek Source Code
+
+```bash
+cd /opt
+sudo git clone --recursive https://github.com/zeek/zeek
+cd zeek
+```
+
+#### b. Configure and Compile Zeek
+
+```bash
+./configure --prefix=/opt/zeek
+make -j$(nproc)
+sudo make install
+```
+
+#### c. Update Network Interface in Zeek Configuration
+
+Edit `/opt/zeek/etc/node.cfg`:
+
+```ini
+[zeek]
+type=standalone
+host=localhost
+interface=enp3s0  # Replace with your actual network interface
+```
+
+#### d. Deploy Zeek Configuration
+
+```bash
+sudo /opt/zeek/bin/zeekctl deploy
+```
+
+### 3. Install Zeek Packages for GeoIP, ASN, and JA3/JA4
+
+#### a. Install Zeek Package Manager (zkg)
+
+If not already installed, install `zkg`:
+
+```bash
+pip install zkg
+```
+
+#### b. Install Required Packages
+
+```bash
+sudo zkg install ja3
+sudo zkg install zeek/anthonykasza/ja4
+sudo zkg install geoip-conn
+```
+
+#### c. Download MaxMind GeoIP Databases
+
+- **Sign Up and Download**: Visit [MaxMind’s website](https://www.maxmind.com) and sign up for an account. Download the GeoLite2 City and ASN databases.
+- **Place Databases**: Place the `.mmdb` files in a directory, e.g., `/usr/share/GeoIP/`.
+
+#### d. Configure Zeek for MaxMind Integration
+
+Edit `local.zeek` or create a new Zeek script:
+
+```zeek
+@load protocols/conn
+@load policy/protocols/ssl/ja3
+@load policy/protocols/ssl/ja4
+redef GeoIP::db_dir = "/usr/share/GeoIP/";
+```
+
+### 4. Database Setup
+
+#### a. Install MySQL/MariaDB
+
+```bash
+sudo pacman -S mariadb
+sudo systemctl start mariadb
+sudo systemctl enable mariadb
+```
+
+#### b. Secure MySQL Installation
+
+```bash
+sudo mysql_secure_installation
+```
+
+#### c. Create Database and User
+
+Run the following SQL commands in the MySQL shell:
+
+```sql
+CREATE DATABASE zeek_logs CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'zeek_user'@'localhost' IDENTIFIED BY 'password123';
+CREATE USER 'zeek_user'@'%' IDENTIFIED BY 'password123';
+GRANT ALL PRIVILEGES ON zeek_logs.* TO 'zeek_user'@'localhost';
+GRANT ALL PRIVILEGES ON zeek_logs.* TO 'zeek_user'@'%';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+#### d. Adjust MySQL Configuration (If Needed)
+
+Edit `/etc/mysql/my.cnf` or `/etc/mysql/mariadb.conf.d/50-server.cnf`:
+
+```ini
+bind-address = 0.0.0.0
+```
+
+Restart MySQL:
+
+```bash
+sudo systemctl restart mariadb
+```
+
+### 5. Configure the Environment
+
+Create and edit the `.env` file or `zeek_to_mysql_config.ini`:
+
+```ini
 INTERFACE=enp3s0
 BASE_DIRECTORY=/path/to/base/directory
 CAPTURE_DURATION=600
@@ -41,100 +186,164 @@ DB_PASSWORD=password123
 DB_HOST=localhost
 ```
 
+### 6. Install Python Dependencies
+
+```bash
+pip install mysql-connector-python python-dotenv
+```
+
 ## Usage
 
 ### Initial Setup
-Set up the environment and database:
+
+Run the setup script to configure the environment and database connections:
 
 ```bash
 ./zeek_to_mysql.sh --setup
 ```
 
-### Running the Script
-Start the capture and processing:
+### Running the Capture and Analysis
+
+Start capturing and processing traffic:
 
 ```bash
 ./zeek_to_mysql.sh --run
 ```
 
 ### Stopping the Service
-To stop a running service:
+
+To stop the running service:
 
 ```bash
 ./zeek_to_mysql.sh --stop
 ```
 
-## Enhancements
+### Running as a Service
 
-### GeoIP and ASN
+Create a systemd service file `/etc/systemd/system/zeek_capture.service`:
 
-To provide geographic and autonomous system information in your traffic analysis, integrate MaxMind's GeoIP databases into Zeek. This data enriches the logs with location and network ownership details, adding valuable context for security analysis.
+```ini
+[Unit]
+Description=Zeek Capture Service
+After=network.target
 
-### SSL/TLS Fingerprinting with JA3/JA4
+[Service]
+ExecStart=/path/to/zeek_to_mysql.sh --run
+ExecStop=/path/to/zeek_to_mysql.sh --stop
+WorkingDirectory=/path/to/
+StandardOutput=journal
+StandardError=journal
+Restart=always
 
-Implement JA3 and JA4 fingerprinting to capture unique identifiers of SSL/TLS client and server handshakes. This helps in detecting and analyzing encrypted traffic patterns, contributing to more effective monitoring and threat detection.
+[Install]
+WantedBy=multi-user.target
+```
 
-### Setup Steps
-
-#### Locate Prerequisites
-
-For systems using `pacman`:
+Enable and start the service:
 
 ```bash
-sudo pacman -Syu gcc make cmake flex bison libpcap openssl python3 swig zlib jemalloc
+sudo systemctl daemon-reload
+sudo systemctl enable zeek_capture.service
+sudo systemctl start zeek_capture.service
 ```
 
-To find paths for GeoIP, OpenSSL, and pcap libraries:
+## Populating Zeek with GeoIP, ASN, and JA3/JA4 Data
 
-```bash
-locate GeoIP.dat
-openssl version -a
-locate libpcap.so
-```
+### GeoIP and ASN Data
 
-#### Download and Install Zeek
+1. **Download MaxMind Databases**: Place the `GeoLite2-City.mmdb` and `GeoLite2-ASN.mmdb` files in `/usr/share/GeoIP/`.
+2. **Configure Zeek**: Edit Zeek configuration to include GeoIP data:
 
-```bash
-cd /opt
-sudo git clone --recursive https://github.com/zeek/zeek
-cd zeek
-./configure --prefix=/opt/zeek && make -j$(nproc) && sudo make install
-```
+   ```zeek
+   @load base/protocols/conn
+   redef GeoIP::db_dir = "/usr/share/GeoIP/";
+   ```
 
-Configure Zeek to use the correct network interface:
+3. **Enrich Logs**: Use the `asn_enrichment.zeek` script to enrich logs with ASN and GeoIP data.
 
-```bash
-sed -i 's/interface=eth0/interface=enp3s0/' /opt/zeek/etc/node.cfg
-sudo /opt/zeek/bin/zeekctl deploy
-```
+### JA3 and JA4 Fingerprinting
 
-#### Integration with MySQL
+1. **Install Packages**:
 
-Run the SQL setup commands to configure your MySQL database for storing Zeek logs:
+   ```bash
+   sudo zkg install ja3
+   sudo zkg install zeek/anthonykasza/ja4
+   ```
 
-```sql
-CREATE DATABASE zeek_logs;
-CREATE USER 'zeek_user'@'localhost' IDENTIFIED BY 'new_password';
-GRANT ALL PRIVILEGES ON zeek_logs.* TO 'zeek_user'@'localhost';
-FLUSH PRIVILEGES;
-```
+2. **Load Scripts in Zeek**:
+
+   ```zeek
+   @load policy/protocols/ssl/ja3
+   @load policy/protocols/ssl/ja4
+   ```
+
+3. **Verify Integration**: Ensure `ssl.log` includes `ja3` and `ja3s` fields.
+
+### Extracting SSL Issuer Information
+
+1. **Load SSL Script**:
+
+   ```zeek
+   @load protocols/ssl
+   ```
+
+2. **Modify SSL Logging**:
+
+   ```zeek
+   redef record SSL::Info += {
+       issuer: string &optional &log;
+   };
+   ```
+
+3. **Add Event Handler**:
+
+   ```zeek
+   event ssl_server_hello(c: connection) {
+       if ( c$ssl?$cert_chain && |c$ssl$cert_chain| > 0 ) {
+           c$ssl$issuer = c$ssl$cert_chain[0]$issuer;
+       }
+   }
+   ```
 
 ## Troubleshooting
 
-- **Script Fails to Start**: Check the `.env` file for correct settings and ensure that all dependencies are installed.
-- **Missing Dependencies**: Verify that MySQL, Zeek, and required Python packages are installed and configured correctly.
+- **Script Fails to Start**: Ensure all environment variables are set correctly and that the database is accessible.
+- **Missing Dependencies**: Verify that all required software is installed and correctly configured.
+- **Zeek Not Capturing Traffic**: Ensure the correct network interface is specified and that Zeek has the necessary permissions.
+- **Database Connection Errors**: Check the MySQL credentials and network accessibility.
 
-## FAQ
+## FAQs
 
 **Q: What is Zeek?**  
-A: Zeek is an open-source network security monitor that goes beyond signature-based attack detection, providing comprehensive logging of network transactions for detailed analysis.
+A: Zeek is an open-source network analysis framework focused on security monitoring. It provides detailed logs of network activity for analysis.
 
 **Q: How can I verify that Zeek is processing traffic?**  
-A: Check the log files generated in the specified base directory. Zeek outputs various log files such as `conn.log`, `dns.log`, etc.
+A: Check the log files generated in the specified base directory. Zeek outputs various log files such as `conn.log`, `dns.log`, `ssl.log`, etc.
 
 **Q: Can I change the network interface used for capturing traffic?**  
 A: Yes, you can specify a different network interface in the `.env` file or update it using the `--update` option in the script.
 
+**Q: How do I integrate MaxMind GeoIP data?**  
+A: Download the GeoIP databases from MaxMind, place them in a directory (e.g., `/usr/share/GeoIP/`), and configure Zeek to use them by setting `redef GeoIP::db_dir`.
+
+**Q: How do I extract SSL issuer information with Zeek?**  
+A: Load the SSL script in Zeek and modify the logging to include the issuer information. See the [Extracting SSL Issuer Information](#extracting-ssl-issuer-information) section.
+
 ## Contributing
 
-Contributions to this project are welcome. Please ensure to update tests as appropriate.
+Contributions to this project are welcome. Please submit pull requests or issues on the project's repository. Ensure that any scripts or code are thoroughly tested and that documentation is updated accordingly.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+## Additional Resources
+
+- **Zeek Documentation**: [https://docs.zeek.org/en/current/](https://docs.zeek.org/en/current/)
+- **MaxMind GeoIP Databases**: [https://www.maxmind.com/en/home](https://www.maxmind.com/en/home)
+- **JA3 Fingerprinting**: [https://github.com/salesforce/ja3](https://github.com/salesforce/ja3)
+- **JA4 Fingerprinting**: [https://github.com/anthonykasza/ja4](https://github.com/anthonykasza/ja4)
+
+---
+
+Feel free to adjust paths, filenames, and other specifics according to your project's setup and requirements. This README provides a structured and comprehensive guide to setting up, configuring, and using the Zeek to MySQL integration with enhanced features for network security monitoring.
