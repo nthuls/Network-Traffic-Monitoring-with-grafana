@@ -79,7 +79,21 @@ GRANT ALL PRIVILEGES ON zeek_logs.* TO 'zeek_user'@'localhost';
 GRANT ALL PRIVILEGES ON zeek_logs.* TO 'zeek_user'@'%';
 FLUSH PRIVILEGES;
 ```
+Troubleshooting
 
+    Script Fails to Start: Ensure all environment variables are set correctly and that the database is accessible.
+    Missing Dependencies: Verify that all required software is installed and correctly configured.
+
+FAQ
+
+Q: What is Zeek?
+A: Zeek is an open-source network security monitor that is not restricted to signature-based attack detection, but instead provides a comprehensive logging of network transactions that can be further analyzed.
+
+Q: How can I verify that Zeek is processing traffic?
+A: Check the log files generated in the specified base directory. Zeek outputs various log files such as conn.log, dns.log, etc.
+
+Q: Can I change the network interface used for capturing traffic?
+A: Yes, you can specify a different network interface in the .env file or update it using the --update option in the script.
 ## Contributing
 
 Contributions to this project are welcome. Please ensure to update tests as appropriate.
