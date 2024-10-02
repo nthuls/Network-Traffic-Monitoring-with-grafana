@@ -26,13 +26,6 @@ Install the required Python libraries using the following command:
 pip install -r requirements.txt
 ```
 
-`requirements.txt` should include:
-
-```
-mysql-connector-python==8.0.28
-python-dotenv==0.20.0
-```
-
 ## Configuration
 
 Before running the scripts, ensure that the `.env` file is properly configured with the necessary database and network settings. Example:
