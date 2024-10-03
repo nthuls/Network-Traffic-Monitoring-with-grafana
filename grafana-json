@@ -1105,15 +1105,29 @@
             "type": "mysql",
             "uid": "edwdsmw1l962of"
           },
-          "editorMode": "code",
+          "editorMode": "builder",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT \n  certificate_subject, \n  certificate_issuer, \n  COUNT(*) as count\nFROM \n  x509  \nWHERE \n  ts >= $__from / 1000 AND \n  ts < $__to / 1000\nGROUP BY \n  certificate_issuer\nORDER BY \n  count DESC\n",
+          "rawSql": "SELECT `certificate.issuer`, `certificate.subject` FROM zeek_logs.x509 LIMIT 50 ",
           "refId": "A",
           "sql": {
             "columns": [
               {
-                "parameters": [],
+                "parameters": [
+                  {
+                    "name": "`certificate.issuer`",
+                    "type": "functionParameter"
+                  }
+                ],
+                "type": "function"
+              },
+              {
+                "parameters": [
+                  {
+                    "name": "`certificate.subject`",
+                    "type": "functionParameter"
+                  }
+                ],
                 "type": "function"
               }
             ],
@@ -1126,7 +1140,8 @@
               }
             ],
             "limit": 50
-          }
+          },
+          "table": "x509"
         }
       ],
       "title": "SSL Subject / Issuer",
@@ -1410,6 +1425,6 @@
   "timezone": "",
   "title": "Zeek Dashboard",
   "uid": "a345c401-504a-47e8-8bbe-47b08d724d8f",
-  "version": 24,
+  "version": 25,
   "weekStart": ""
 }
