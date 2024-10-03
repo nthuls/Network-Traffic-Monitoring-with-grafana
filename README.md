@@ -1,5 +1,4 @@
 # Zeek to MySQL Integration
-
 ## Project Overview
 
 This project provides a comprehensive solution for capturing network traffic, processing it with Zeek (formerly Bro), and storing the enriched logs into a MySQL database for further analysis and visualization. It includes scripts and configurations to enhance Zeek's capabilities with GeoIP, ASN data, and JA3/JA4 fingerprinting, enabling detailed network security monitoring and analysis.
@@ -347,5 +346,6 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 ---
 SAMPLE DASHBOARD 
 ![image](https://github.com/user-attachments/assets/745f3750-a6f2-4c65-9bdd-6761be439ec3)
+###I have a slow machine so here is the node graph I got earlier
+![image](https://github.com/user-attachments/assets/6005bd58-0e64-428e-a010-2fc938249686)
 
-Feel free to adjust paths, filenames, and other specifics according to your project's setup and requirements. This README provides a structured and comprehensive guide to setting up, configuring, and using the Zeek to MySQL integration with enhanced features for network security monitoring.
