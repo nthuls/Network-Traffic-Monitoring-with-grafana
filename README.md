@@ -345,5 +345,7 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 - **JA4 Fingerprinting**: [https://github.com/anthonykasza/ja4](https://github.com/anthonykasza/ja4)
 
 ---
+SAMPLE DASHBOARD 
+![image](https://github.com/user-attachments/assets/745f3750-a6f2-4c65-9bdd-6761be439ec3)
 
 Feel free to adjust paths, filenames, and other specifics according to your project's setup and requirements. This README provides a structured and comprehensive guide to setting up, configuring, and using the Zeek to MySQL integration with enhanced features for network security monitoring.
